@@ -94,6 +94,95 @@ def _safe_filename(name: str) -> str:
     return safe_name.strip("._") or "image"
 
 
+def _document_id_from_path(path: Path) -> str:
+    return _safe_filename(path.stem).lower()
+
+
+def _first_value(*values: Any) -> Any:
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
+def _default_extraction_method(element: dict[str, Any]) -> str:
+    parser = element.get("parser") or element.get("metadata", {}).get("parser")
+    content_type = element.get("content_type")
+
+    if parser == "pypdf" and content_type == "text":
+        return "pdf_text"
+
+    if parser == "pypdf" and content_type == "image":
+        return "embedded_image"
+
+    return "unstructured_partition"
+
+
+def _add_rag_metadata(
+    elements: list[dict[str, Any]],
+    document_id: str,
+) -> list[dict[str, Any]]:
+    element_ids = [
+        f"{document_id}:element:{element_index:06d}"
+        for element_index in range(len(elements))
+    ]
+
+    for element_index, element in enumerate(elements):
+        metadata = element.setdefault("metadata", {})
+        page_number = _first_value(element.get("page_number"), metadata.get("page_number"))
+        image_path = _first_value(element.get("image_path"), metadata.get("image_path"))
+        table_path = _first_value(element.get("table_path"), metadata.get("table_path"))
+        parser = _first_value(element.get("parser"), metadata.get("parser"), "unstructured")
+        extraction_method = _first_value(
+            element.get("extraction_method"),
+            metadata.get("extraction_method"),
+            _default_extraction_method(element),
+        )
+        previous_element_id = element_ids[element_index - 1] if element_index else None
+        next_element_id = (
+            element_ids[element_index + 1]
+            if element_index + 1 < len(element_ids)
+            else None
+        )
+
+        element.update(
+            {
+                "document_id": document_id,
+                "element_id": element_ids[element_index],
+                "element_index": element_index,
+                "page_number": page_number,
+                "parser": parser,
+                "extraction_method": extraction_method,
+                "previous_element_id": previous_element_id,
+                "next_element_id": next_element_id,
+            },
+        )
+
+        if image_path is not None:
+            element["image_path"] = image_path
+        if table_path is not None:
+            element["table_path"] = table_path
+
+        metadata.update(
+            {
+                "document_id": document_id,
+                "element_id": element_ids[element_index],
+                "element_index": element_index,
+                "page_number": page_number,
+                "parser": parser,
+                "extraction_method": extraction_method,
+                "previous_element_id": previous_element_id,
+                "next_element_id": next_element_id,
+            },
+        )
+        if image_path is not None:
+            metadata["image_path"] = image_path
+        if table_path is not None:
+            metadata["table_path"] = table_path
+
+    return elements
+
+
 def _looks_like_table_line(line: str) -> bool:
     compact = line.strip()
     if not compact:
@@ -348,6 +437,7 @@ def parse_raw_pdfs(
 
     written_files: list[Path] = []
     for pdf_path in pdf_paths:
+        document_id = _document_id_from_path(pdf_path)
         document_output_dir = output_dir / pdf_path.stem
         image_output_dir = document_output_dir / "images"
         table_output_dir = document_output_dir / "tables"
@@ -364,8 +454,10 @@ def parse_raw_pdfs(
             extract_images=extract_images,
         )
         table_files = _write_table_files(elements, table_output_dir)
+        elements = _add_rag_metadata(elements, document_id)
         content_counts = Counter(element["content_type"] for element in elements)
         payload = {
+            "document_id": document_id,
             "source": str(pdf_path),
             "element_count": len(elements),
             "content_counts": dict(content_counts),
