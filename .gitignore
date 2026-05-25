@@ -2,3 +2,5 @@ db/
 
 # Qdrant local database
 qdrant_data/
+
+*.pdf
