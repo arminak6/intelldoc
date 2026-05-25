@@ -1,4 +1,4 @@
-db/
+data/
 
 # Qdrant local database
 qdrant_data/
