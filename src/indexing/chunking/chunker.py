@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_PARSED_DIR = PROJECT_ROOT / "data" / "parsed" / "pdf"
 DEFAULT_INPUT_NAMES = ("enriched_elements.json", "elements.json")
 DEFAULT_OUTPUT_NAME = "chunks.json"
