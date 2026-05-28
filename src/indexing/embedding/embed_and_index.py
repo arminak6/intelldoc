@@ -92,7 +92,7 @@ def payload_for_chunk(chunk: dict[str, Any], embedding_model_id: str) -> dict[st
     payload = {
         key: value
         for key, value in chunk.items()
-        if key not in {"vector", "embedding"}
+        if key not in {"vector", "embedding", "metadata"}
     }
     payload["embedding_model_id"] = embedding_model_id
     payload["text_hash"] = text_hash(chunk.get("text", ""))
