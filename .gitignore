@@ -1,4 +1,6 @@
 data/
+__pycache__/
+*.py[cod]
 
 # Local secrets and credentials
 .env
