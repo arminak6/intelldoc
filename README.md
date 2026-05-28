@@ -163,7 +163,9 @@ data/parsed/pdf/<document_id>/
 
 `chunks.json` is the local source of truth before embedding.
 
-Qdrant stores the vector plus original chunk payload for retrieval.
+Qdrant stores each chunk vector plus the retrieval payload used by the chatbot,
+including chunk text, document/page identifiers, source element IDs, and
+image/table paths.
 
 ## Notes
 
